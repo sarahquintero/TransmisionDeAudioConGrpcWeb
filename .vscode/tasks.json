@@ -1,0 +1,104 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Levantar Docker",
+            "type": "shell",
+            "command": "docker-compose up -d",
+            "problemMatcher": [],
+            "runOptions": {
+                "runOn": "folderOpen"
+            }
+        },
+        {
+            "label": "Logs Gateway",
+            "type": "shell",
+            "command": "docker-compose logs -f api-gateway",
+            "problemMatcher": [],
+            "presentation": {
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Logs Streaming",
+            "type": "shell",
+            "command": "docker-compose logs -f streaming",
+            "problemMatcher": [],
+            "presentation": {
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Logs Envoy",
+            "type": "shell",
+            "command": "docker-compose logs -f envoy",
+            "problemMatcher": [],
+            "presentation": {
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Logs Reacciones",
+            "type": "shell",
+            "command": "docker-compose logs -f reacciones",
+            "problemMatcher": [],
+            "presentation": {
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Logs Suscripciones",
+            "type": "shell",
+            "command": "docker-compose logs -f suscripciones",
+            "problemMatcher": [],
+            "presentation": {
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Logs Audios",
+            "type": "shell",
+            "command": "docker-compose logs -f audios",
+            "problemMatcher": [],
+            "presentation": {
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Logs Estadisticas",
+            "type": "shell",
+            "command": "docker-compose logs -f estadisticas",
+            "problemMatcher": [],
+            "presentation": {
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Logs Frontend",
+            "type": "shell",
+            "command": "docker-compose logs -f frontend",
+            "problemMatcher": [],
+            "presentation": {
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Logs Consul",
+            "type": "shell",
+            "command": "docker-compose logs -f consul",
+            "problemMatcher": [],
+            "presentation": {
+                "panel": "dedicated",
+                "clear": true
+            }
+        }
+    ]
+}

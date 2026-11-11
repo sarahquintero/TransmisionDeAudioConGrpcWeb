@@ -1,13 +1,11 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Transmisión de Audio con gRPC-Web</title>
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-  />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <style>
     :root {
       --bg-page: #f8fafc;
@@ -262,10 +260,21 @@
       cursor: not-allowed;
     }
 
-    .reaction-btn.thumbs { color: #2563eb; }
-    .reaction-btn.heart  { color: #dc2626; }
-    .reaction-btn.sad    { color: #0284c7; }
-    .reaction-btn.laugh  { color: #d97706; }
+    .reaction-btn.thumbs {
+      color: #2563eb;
+    }
+
+    .reaction-btn.heart {
+      color: #dc2626;
+    }
+
+    .reaction-btn.sad {
+      color: #0284c7;
+    }
+
+    .reaction-btn.laugh {
+      color: #d97706;
+    }
 
     .floating-reaction {
       position: fixed;
@@ -280,6 +289,7 @@
         opacity: 0.95;
         transform: translate(-50%, 0) scale(1);
       }
+
       100% {
         opacity: 0;
         transform: translate(-50%, -75px) scale(1.45);
@@ -321,6 +331,20 @@
 
     .btn-green:hover:not(:disabled) {
       background-color: var(--green-hover);
+    }
+
+    .btn-blue {
+      background-color: #0d6efd;
+      /* Azul de Bootstrap */
+      color: white;
+      border: 1px solid #0a58ca;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .btn-blue:hover {
+      background-color: #0b5ed7;
     }
 
     .dashed-sep {
@@ -515,6 +539,7 @@
     }
   </style>
 </head>
+
 <body>
   <h1>Transmisión de Audio con gRPC-Web</h1>
   <p class="conn-info">La conexión se intentará al servidor ubicado en localhost:8000 (API Gateway → Envoy :8080)</p>
@@ -547,8 +572,8 @@
     <audio id="audioPlayer" class="audio-native" controls></audio>
 
     <div class="player-controls-row">
-      <button type="button" id="btnPlay" class="btn-mini" disabled>▶ Play</button>
-      <button type="button" id="btnPause" class="btn-mini" disabled>⏸ Pause</button>
+      <button type="button" id="btnPlay" class="btn-mini" disabled>▶ Reproducir</button>
+      <button type="button" id="btnPause" class="btn-mini" disabled>⏸ Pausar</button>
       <span class="player-state-text" id="playerState">En espera.</span>
     </div>
 
@@ -567,16 +592,19 @@
     </div>
 
     <div class="reactions-bar" id="reactionsBar">
-      <button type="button" class="reaction-btn thumbs" data-emoji="👍" data-icon="fa-solid fa-thumbs-up" title="Me gusta">
+      <button type="button" class="reaction-btn thumbs" data-emoji="👍" data-icon="fa-solid fa-thumbs-up"
+        title="Me gusta">
         <i class="fa-solid fa-thumbs-up"></i>
       </button>
       <button type="button" class="reaction-btn heart" data-emoji="❤️" data-icon="fa-solid fa-heart" title="Me encanta">
         <i class="fa-solid fa-heart"></i>
       </button>
-      <button type="button" class="reaction-btn sad" data-emoji="😢" data-icon="fa-solid fa-face-sad-tear" title="Triste">
+      <button type="button" class="reaction-btn sad" data-emoji="😢" data-icon="fa-solid fa-face-sad-tear"
+        title="Triste">
         <i class="fa-solid fa-face-sad-tear"></i>
       </button>
-      <button type="button" class="reaction-btn laugh" data-emoji="😄" data-icon="fa-solid fa-face-laugh" title="Divertido">
+      <button type="button" class="reaction-btn laugh" data-emoji="😄" data-icon="fa-solid fa-face-laugh"
+        title="Divertido">
         <i class="fa-solid fa-face-laugh"></i>
       </button>
     </div>
@@ -588,7 +616,7 @@
 
   <!-- Sección 2: Suscripción y Pagos -->
   <section class="card-box" aria-labelledby="sec-sub">
-    <h2 id="sec-sub">3. Suscripción y Pagos</h2>
+    <h2 id="sec-sub">Suscripción y Pagos</h2>
 
     <div class="inline-field">
       <label for="selectPlan">Seleccione un plan:</label>
@@ -603,7 +631,7 @@
 
     <hr class="dashed-sep" />
 
-    <label for="inputToken" class="sub-caption">Simulación de Token Repetido (Requerimiento e):</label>
+    <label for="inputToken" class="sub-caption">Simulación de Token Repetido:</label>
     <div class="token-row">
       <input type="text" id="inputToken" placeholder="Token UUID..." />
       <button type="button" id="btnReutilizarToken" class="btn-blue">Reutilizar Token</button>
@@ -624,7 +652,7 @@
 
   <!-- Sección 4: Panel de Administrador -->
   <section class="card-box admin-box" aria-labelledby="sec-admin">
-    <h2 id="sec-admin">⚙️ Panel de Administrador</h2>
+    <h2 id="sec-admin">Agregar Audios</h2>
 
     <div class="admin-field">
       <label for="inputArchivo" class="stacked-label">Subir nuevo Audio:</label>
@@ -646,7 +674,7 @@
     <div class="admin-dynamic-meta" id="adminMetadataFields" hidden></div>
 
     <button type="button" id="btnRegistrarAudio" class="btn-orange">
-      ☁️ Registrar y Subir Audio
+      Registrar y Subir Audio
     </button>
   </section>
 
@@ -656,4 +684,5 @@
     <div class="logs-box" id="systemLogs" role="log" aria-live="polite"></div>
   </section>
 </body>
+
 </html>
