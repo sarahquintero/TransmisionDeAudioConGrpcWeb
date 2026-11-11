@@ -536,9 +536,23 @@ async function pagarSuscripcion() {
     if (!res.ok) {
       throw new Error(data.error || `HTTP ${res.status}`);
     }
+
     el.inputToken.value = data.token;
-    el.tokenStatus.textContent = `Pago aprobado (${data.plan}). Token listo para validar.`;
     logSystem(`Token generado: ${data.token} (${data.plan})`);
+
+    // Validación automática inmediata para activar la suscripción y consumir el token
+    const valRes = await fetch(`${API_BASE}/api/suscripciones/validar-token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: data.token }),
+    });
+    const valData = await valRes.json();
+    if (!valRes.ok || !valData.valido) {
+      throw new Error(valData.error || `HTTP ${valRes.status}`);
+    }
+
+    el.tokenStatus.textContent = `Pago aprobado (${data.plan}). Suscripción activada (token consumido).`;
+    logSystem("Pago aprobado y Suscripción activada automáticamente (token consumido)");
   } catch (err) {
     el.tokenStatus.textContent = `Error en pago: ${err.message}`;
     logSystem(`Error al procesar pago: ${err.message}`);
