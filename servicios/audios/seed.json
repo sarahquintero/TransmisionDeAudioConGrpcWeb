@@ -1,0 +1,62 @@
+[
+  {
+    "id": "cancion1",
+    "titulo": "cancion1",
+    "tipo": "Música",
+    "formato": "mp3",
+    "archivo": "cancion1.mp3",
+    "metadatos": {
+      "artista_principal": "Artista Demo",
+      "album": "Album de Prueba",
+      "genero_musical": "Rock"
+    }
+  },
+  {
+    "id": "cancion2",
+    "titulo": "cancion2",
+    "tipo": "Música",
+    "formato": "mp3",
+    "archivo": "cancion2.mp3",
+    "metadatos": {
+      "artista_principal": "Banda Demo",
+      "album": "Segundo Album",
+      "genero_musical": "Pop"
+    }
+  },
+  {
+    "id": "podcast1",
+    "titulo": "podcast1",
+    "tipo": "Podcast",
+    "formato": "mp3",
+    "archivo": "podcast1.mp3",
+    "metadatos": {
+      "nombre_podcast": "Sistemas Distribuidos",
+      "titulo_episodio": "Introducción a gRPC",
+      "anfitrion": "Profesor X"
+    }
+  },
+  {
+    "id": "libro1",
+    "titulo": "libro1",
+    "tipo": "Audiolibro",
+    "formato": "mp3",
+    "archivo": "libro1.mp3",
+    "metadatos": {
+      "titulo_libro": "El Quijote",
+      "autor": "Miguel de Cervantes",
+      "narrador": "Actor de Voz"
+    }
+  },
+  {
+    "id": "ruido1",
+    "titulo": "ruido1",
+    "tipo": "Ruido Blanco",
+    "formato": "mp3",
+    "archivo": "ruido1.mp3",
+    "metadatos": {
+      "tipo_sonido": "Ruido Marrón",
+      "fuente_audio": "Lluvia",
+      "uso_sugerido": "Concentración"
+    }
+  }
+]

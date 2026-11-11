@@ -1,0 +1,217 @@
+# ==========================================================================
+#  Transmisión de Audio con gRPC-Web — Orquestación (Fase 1)
+#
+#  Puntos de acceso desde el host:
+#    http://localhost:3000  -> Frontend Web (UI en modo claro)
+#    http://localhost:8000  -> API Gateway (punto de entrada único)
+#    http://localhost:8500  -> Consul UI (descubrimiento de servicios)
+#    http://localhost:8080  -> Envoy gRPC-Web proxy
+#    http://localhost:9901  -> Envoy admin (diagnóstico)
+#
+#  Los microservicios NO exponen puertos al host: solo son accesibles a
+#  través del API Gateway, que los descubre dinámicamente en Consul.
+# ==========================================================================
+name: transmision-audio
+
+# Plantilla común para los microservicios Go.
+x-go-service: &go-service
+  restart: unless-stopped
+  networks: [backend]
+  depends_on:
+    consul:
+      condition: service_healthy
+
+x-go-env: &go-env
+  CONSUL_HTTP_ADDR: consul:8500
+  TZ: America/Bogota
+
+services:
+  # ------------------------------------------------------------------------
+  # Descubrimiento de servicios
+  # ------------------------------------------------------------------------
+  consul:
+    image: hashicorp/consul:1.20
+    command: >
+      agent -dev -ui -client=0.0.0.0 -log-level=warn
+      -config-dir=/consul/services
+    ports:
+      - "8500:8500"
+    volumes:
+      # Registro estático de servicios que no pueden registrarse solos (Envoy).
+      - ./consul/services:/consul/services:ro
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [backend]
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------------
+  # Punto de entrada único
+  # ------------------------------------------------------------------------
+  api-gateway:
+    <<: *go-service
+    build:
+      context: .
+      args: { SERVICE_PATH: api-gateway }
+    image: transmision/api-gateway:dev
+    environment:
+      <<: *go-env
+      SERVICE_NAME: api-gateway
+      SERVICE_PORT: "8000"
+      STREAMING_PROXY_SERVICE: envoy      # nombre de Envoy en Consul
+      DISCOVERY_CACHE_TTL: 5s
+      CORS_ALLOWED_ORIGINS: "*"
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8000/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ------------------------------------------------------------------------
+  # Proxy gRPC-Web -> gRPC (tráfico de streaming de audio)
+  # ------------------------------------------------------------------------
+  envoy:
+    image: envoyproxy/envoy:v1.33-latest
+    command: ["-c", "/etc/envoy/envoyConfig2.yaml", "--log-level", "info"]
+    volumes:
+      - ./envoy/envoyConfig2.yaml:/etc/envoy/envoyConfig2.yaml:ro
+    ports:
+      - "8080:8080"
+      - "9901:9901"
+    depends_on:
+      consul:
+        condition: service_healthy
+      streaming:
+        condition: service_healthy
+    networks: [backend]
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------------
+  # Microservicios
+  # ------------------------------------------------------------------------
+  streaming:
+    <<: *go-service
+    build:
+      context: .
+      args: { SERVICE_PATH: servicios/streaming }
+    image: transmision/streaming:dev
+    environment:
+      <<: *go-env
+      SERVICE_NAME: streaming
+      SERVICE_PORT: "50051"   # gRPC
+      HEALTH_PORT: "8081"     # HTTP /health
+      SERVICE_TAGS: grpc,audio
+      CHUNK_DELAY_MS: "25"
+      AUDIO_DIR: /data/audio
+    volumes:
+      - audio_uploads:/data/audio
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8081/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  reacciones:
+    <<: *go-service
+    build:
+      context: .
+      args: { SERVICE_PATH: servicios/reacciones }
+    image: transmision/reacciones:dev
+    environment:
+      <<: *go-env
+      SERVICE_NAME: reacciones
+      SERVICE_PORT: "8082"
+      SERVICE_TAGS: websocket
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8082/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  suscripciones:
+    <<: *go-service
+    build:
+      context: .
+      args: { SERVICE_PATH: servicios/suscripciones }
+    image: transmision/suscripciones:dev
+    environment:
+      <<: *go-env
+      SERVICE_NAME: suscripciones
+      SERVICE_PORT: "8083"
+      SERVICE_TAGS: rest
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8083/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  audios:
+    <<: *go-service
+    build:
+      context: .
+      args: { SERVICE_PATH: servicios/audios }
+    image: transmision/audios:dev
+    environment:
+      <<: *go-env
+      SERVICE_NAME: audios
+      SERVICE_PORT: "8084"
+      SERVICE_TAGS: rest,metadatos
+      SEED_FILE: /app/seed.json
+      AUDIO_UPLOAD_DIR: /data/audio
+    volumes:
+      - ./servicios/audios/seed.json:/app/seed.json:ro
+      - audio_uploads:/data/audio
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8084/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  estadisticas:
+    <<: *go-service
+    build:
+      context: .
+      args: { SERVICE_PATH: servicios/estadisticas }
+    image: transmision/estadisticas:dev
+    environment:
+      <<: *go-env
+      SERVICE_NAME: estadisticas
+      SERVICE_PORT: "8085"
+      SERVICE_TAGS: rest
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8085/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ------------------------------------------------------------------------
+  # Frontend Web (build Webpack + Nginx)
+  # ------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+    image: transmision/frontend:dev
+    ports:
+      - "3000:80"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [backend]
+    restart: unless-stopped
+
+volumes:
+  audio_uploads:
+
+networks:
+  backend:
+    driver: bridge
+

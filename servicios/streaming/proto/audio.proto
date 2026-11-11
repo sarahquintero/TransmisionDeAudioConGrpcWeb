@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package audio;
+
+option go_package = "transmision/servicios/streaming/proto;audiopb";
+
+message AudioRequest {
+  string titulo = 1;
+  string formato = 2;
+}
+
+message AudioChunk {
+  bytes data = 1;
+}
+
+service AudioStreamer {
+  rpc StreamAudio (AudioRequest) returns (stream AudioChunk);
+}

@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Transmisión de Audio con gRPC-Web</title>
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+  />
+  <style>
+    :root {
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-admin: #fffbeb;
+      --bg-logs: #f1f5f9;
+      --text-primary: #111827;
+      --text-secondary: #374151;
+      --text-muted: #6b7280;
+      --border-card: #cbd5e1;
+      --border-subtle: #e2e8f0;
+      --border-admin: #f59e0b;
+      --green: #22a047;
+      --green-hover: #1a853a;
+      --yellow: #facc15;
+      --yellow-hover: #eab308;
+      --orange: #f97316;
+      --orange-hover: #ea580c;
+      --blue: #2563eb;
+      --blue-hover: #1d4ed8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 22px 20px 36px;
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .conn-info {
+      margin: 0 0 14px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    /* --- Sección 1: Player --- */
+    .player-area {
+      max-width: 520px;
+      margin-bottom: 20px;
+    }
+
+    .inline-field {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .inline-field label {
+      font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+
+    select,
+    input[type="text"] {
+      padding: 4px 8px;
+      font-size: 13.5px;
+      color: var(--text-primary);
+      background-color: #ffffff;
+      border: 1px solid #94a3b8;
+      border-radius: 4px;
+      outline: none;
+    }
+
+    select:focus,
+    input[type="text"]:focus {
+      border-color: var(--blue);
+    }
+
+    .btn-stream {
+      padding: 6px 12px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #ffffff;
+      background-color: var(--blue);
+      border: 1px solid #1d4ed8;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .btn-stream:hover:not(:disabled) {
+      background-color: var(--blue-hover);
+    }
+
+    .btn-stream:disabled {
+      background-color: #e2e8f0;
+      color: #64748b;
+      border-color: #cbd5e1;
+      cursor: not-allowed;
+    }
+
+    .audio-native {
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      height: 38px;
+    }
+
+    .player-controls-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-mini {
+      padding: 4px 10px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+      background-color: #ffffff;
+      border: 1px solid var(--border-card);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .btn-mini:hover:not(:disabled) {
+      background-color: #f1f5f9;
+    }
+
+    .btn-mini:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .player-state-text {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+    }
+
+    .metadata-box {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 5px;
+      font-size: 13px;
+    }
+
+    .metadata-box-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--text-primary);
+    }
+
+    .metadata-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 4px 12px;
+    }
+
+    .metadata-list li {
+      color: var(--text-secondary);
+    }
+
+    .metadata-list strong {
+      color: var(--text-primary);
+    }
+
+    /* --- Cajas con borde (Reacciones, Suscripción, Historial, Admin) --- */
+    .card-box {
+      width: 100%;
+      max-width: 480px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 6px;
+      padding: 16px 18px;
+      margin-bottom: 18px;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      position: relative;
+    }
+
+    .card-box h2 {
+      margin: 0 0 12px;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    /* --- Reacciones en Vivo --- */
+    .reactions-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .reactions-header h2 {
+      margin: 0;
+    }
+
+    .reactions-room {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .reactions-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .reaction-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 14px;
+      font-size: 16px;
+      background-color: #f8fafc;
+      color: var(--text-primary);
+      border: 1px solid var(--border-card);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.15s ease, transform 0.1s ease;
+    }
+
+    .reaction-btn:hover:not(:disabled) {
+      background-color: #eef2ff;
+      border-color: #93c5fd;
+    }
+
+    .reaction-btn:active:not(:disabled) {
+      transform: scale(0.95);
+    }
+
+    .reaction-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .reaction-btn.thumbs { color: #2563eb; }
+    .reaction-btn.heart  { color: #dc2626; }
+    .reaction-btn.sad    { color: #0284c7; }
+    .reaction-btn.laugh  { color: #d97706; }
+
+    .floating-reaction {
+      position: fixed;
+      pointer-events: none;
+      font-size: 24px;
+      z-index: 9999;
+      animation: floatUpFade 1s ease-out forwards;
+    }
+
+    @keyframes floatUpFade {
+      0% {
+        opacity: 0.95;
+        transform: translate(-50%, 0) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -75px) scale(1.45);
+      }
+    }
+
+    .chat-reacciones {
+      min-height: 78px;
+      max-height: 140px;
+      overflow-y: auto;
+      padding: 8px 10px;
+      background-color: #f8fafc;
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .chat-empty {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* --- Suscripción y Pagos --- */
+    .btn-green {
+      margin-top: 4px;
+      padding: 7px 14px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #ffffff;
+      background-color: var(--green);
+      border: 1px solid #15803d;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .btn-green:hover:not(:disabled) {
+      background-color: var(--green-hover);
+    }
+
+    .dashed-sep {
+      border: none;
+      border-top: 1px dashed #cbd5e1;
+      margin: 14px 0 12px;
+    }
+
+    .sub-caption {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .token-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .token-row input[type="text"] {
+      flex: 1 1 auto;
+      padding: 6px 8px;
+    }
+
+    .btn-yellow {
+      padding: 7px 14px;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #111827;
+      background-color: var(--yellow);
+      border: 1px solid #ca8a04;
+      border-radius: 4px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-yellow:hover:not(:disabled) {
+      background-color: var(--yellow-hover);
+    }
+
+    .token-feedback {
+      margin-top: 8px;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      word-break: break-all;
+    }
+
+    /* --- Historial --- */
+    .history-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .history-header h2 {
+      margin: 0;
+    }
+
+    .history-user {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      font-family: ui-monospace, monospace;
+    }
+
+    .history-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .history-list li {
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 13.5px;
+      color: var(--text-primary);
+    }
+
+    .history-list li:last-child {
+      border-bottom: none;
+    }
+
+    .history-empty {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* --- Panel de Administrador --- */
+    .admin-box {
+      background-color: var(--bg-admin);
+      border-color: var(--border-admin);
+    }
+
+    .stacked-label {
+      display: block;
+      font-weight: 700;
+      font-size: 13.5px;
+      margin-bottom: 5px;
+      color: var(--text-primary);
+    }
+
+    .admin-field {
+      margin-bottom: 12px;
+    }
+
+    .admin-box select,
+    .admin-box input[type="text"] {
+      width: 100%;
+      padding: 6px 8px;
+    }
+
+    .admin-dynamic-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      background-color: #ffffff;
+      border: 1px solid #fcd34d;
+      border-radius: 4px;
+    }
+
+    .admin-dynamic-meta[hidden] {
+      display: none;
+    }
+
+    .admin-meta-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #92400e;
+    }
+
+    .admin-meta-row {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .admin-meta-row label {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .btn-orange {
+      width: 100%;
+      padding: 8px 14px;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #ffffff;
+      background-color: var(--orange);
+      border: 1px solid #c2410c;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .btn-orange:hover:not(:disabled) {
+      background-color: var(--orange-hover);
+    }
+
+    /* --- Logs de aplicación --- */
+    .logs-section {
+      width: 100%;
+      max-width: 1180px;
+      margin-top: 6px;
+    }
+
+    .logs-label {
+      display: block;
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+
+    .logs-box {
+      width: 100%;
+      height: 210px;
+      overflow-y: auto;
+      padding: 10px 12px;
+      background-color: var(--bg-logs);
+      border: 1px solid #94a3b8;
+      border-radius: 3px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12.5px;
+      color: var(--text-primary);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <h1>Transmisión de Audio con gRPC-Web</h1>
+  <p class="conn-info">La conexión se intentará al servidor ubicado en localhost:8000 (API Gateway → Envoy :8080)</p>
+
+  <!-- Sección 1: Player -->
+  <section class="player-area" aria-label="Reproductor de Audio">
+    <div class="inline-field">
+      <label for="tipoAudio">1. Tipo de Audio:</label>
+      <select id="tipoAudio">
+        <option value="">-- Seleccione --</option>
+        <option value="Música" selected>Música</option>
+        <option value="Podcast">Podcast</option>
+        <option value="Audiolibro">Audiolibro</option>
+        <option value="Ruido Blanco">Ruido Blanco</option>
+      </select>
+    </div>
+
+    <div class="inline-field">
+      <label for="selectAudio">2. Audio:</label>
+      <select id="selectAudio">
+        <option value="">-- Seleccione un tipo primero --</option>
+      </select>
+    </div>
+
+    <button type="button" id="btnReproducir" class="btn-stream" disabled>
+      Pedir Canción y Reproducir
+    </button>
+
+    <!-- Reproductor HTML5 con controls para evitar bloqueo de autoplay -->
+    <audio id="audioPlayer" class="audio-native" controls></audio>
+
+    <div class="player-controls-row">
+      <button type="button" id="btnPlay" class="btn-mini" disabled>▶ Play</button>
+      <button type="button" id="btnPause" class="btn-mini" disabled>⏸ Pause</button>
+      <span class="player-state-text" id="playerState">En espera.</span>
+    </div>
+
+    <!-- Visualización de metadatos específicos debajo del reproductor -->
+    <div class="metadata-box" id="metadataBox" hidden>
+      <div class="metadata-box-title" id="metadataTitle">Metadatos del Audio</div>
+      <ul class="metadata-list" id="metadataList"></ul>
+    </div>
+  </section>
+
+  <!-- Sección de Reacciones (justo antes de Suscripción y Pagos) -->
+  <section class="card-box" aria-labelledby="sec-reacciones">
+    <div class="reactions-header">
+      <h2 id="sec-reacciones">Reacciones en Vivo</h2>
+      <span class="reactions-room" id="reactionsRoom">Sala: sin audio</span>
+    </div>
+
+    <div class="reactions-bar" id="reactionsBar">
+      <button type="button" class="reaction-btn thumbs" data-emoji="👍" data-icon="fa-solid fa-thumbs-up" title="Me gusta">
+        <i class="fa-solid fa-thumbs-up"></i>
+      </button>
+      <button type="button" class="reaction-btn heart" data-emoji="❤️" data-icon="fa-solid fa-heart" title="Me encanta">
+        <i class="fa-solid fa-heart"></i>
+      </button>
+      <button type="button" class="reaction-btn sad" data-emoji="😢" data-icon="fa-solid fa-face-sad-tear" title="Triste">
+        <i class="fa-solid fa-face-sad-tear"></i>
+      </button>
+      <button type="button" class="reaction-btn laugh" data-emoji="😄" data-icon="fa-solid fa-face-laugh" title="Divertido">
+        <i class="fa-solid fa-face-laugh"></i>
+      </button>
+    </div>
+
+    <div id="chat-reacciones" class="chat-reacciones" aria-live="polite">
+      <span class="chat-empty">Aún no hay reacciones para este audio.</span>
+    </div>
+  </section>
+
+  <!-- Sección 2: Suscripción y Pagos -->
+  <section class="card-box" aria-labelledby="sec-sub">
+    <h2 id="sec-sub">3. Suscripción y Pagos</h2>
+
+    <div class="inline-field">
+      <label for="selectPlan">Seleccione un plan:</label>
+      <select id="selectPlan">
+        <option value="Plan Básico ($5/mes)">Plan Básico ($5/mes)</option>
+        <option value="Plan Premium ($12/mes)">Plan Premium ($12/mes)</option>
+        <option value="Plan VIP ($20/mes)">Plan VIP ($20/mes)</option>
+      </select>
+    </div>
+
+    <button type="button" id="btnPagar" class="btn-green">Pagar Suscripción</button>
+
+    <hr class="dashed-sep" />
+
+    <label for="inputToken" class="sub-caption">Simulación de Token Repetido (Requerimiento e):</label>
+    <div class="token-row">
+      <input type="text" id="inputToken" placeholder="Token UUID..." />
+      <button type="button" id="btnReutilizarToken" class="btn-blue">Reutilizar Token</button>
+    </div>
+    <div class="token-feedback" id="tokenStatus"></div>
+  </section>
+
+  <!-- Sección 3: Historial de Reproducción -->
+  <section class="card-box" aria-labelledby="sec-hist">
+    <div class="history-header">
+      <h2 id="sec-hist">Historial de Reproducción</h2>
+      <span class="history-user" id="historyUserBadge"></span>
+    </div>
+    <ul class="history-list" id="listaHistorial">
+      <li class="history-empty">Sin reproducciones registradas aún.</li>
+    </ul>
+  </section>
+
+  <!-- Sección 4: Panel de Administrador -->
+  <section class="card-box admin-box" aria-labelledby="sec-admin">
+    <h2 id="sec-admin">⚙️ Panel de Administrador</h2>
+
+    <div class="admin-field">
+      <label for="inputArchivo" class="stacked-label">Subir nuevo Audio:</label>
+      <input type="file" id="inputArchivo" accept="audio/*,.mp3" />
+    </div>
+
+    <div class="admin-field">
+      <label for="adminTipoAudio" class="stacked-label">Tipo de Audio:</label>
+      <select id="adminTipoAudio">
+        <option value="">-- Seleccione --</option>
+        <option value="Música">Música</option>
+        <option value="Podcast">Podcast</option>
+        <option value="Audiolibro">Audiolibro</option>
+        <option value="Ruido Blanco">Ruido Blanco</option>
+      </select>
+    </div>
+
+    <!-- Campos dinámicos según el Tipo de Audio elegido -->
+    <div class="admin-dynamic-meta" id="adminMetadataFields" hidden></div>
+
+    <button type="button" id="btnRegistrarAudio" class="btn-orange">
+      ☁️ Registrar y Subir Audio
+    </button>
+  </section>
+
+  <!-- Sección 5: Logs de aplicación -->
+  <section class="logs-section" aria-labelledby="sec-logs">
+    <label id="sec-logs" class="logs-label">Logs de aplicación:</label>
+    <div class="logs-box" id="systemLogs" role="log" aria-live="polite"></div>
+  </section>
+</body>
+</html>

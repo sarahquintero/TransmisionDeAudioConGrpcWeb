@@ -1,0 +1,93 @@
+# Envoy: traduce gRPC-Web (HTTP/1.1 desde el navegador, vía API Gateway)
+# a gRPC nativo (HTTP/2) hacia el Servidor de Streaming.
+#
+#   API Gateway (/grpc/*) ──HTTP/1.1 gRPC-Web──▶ Envoy :8080 ──HTTP/2 gRPC──▶ streaming:50051
+#
+# Envoy se registra en Consul mediante consul/services/envoy.json para que el
+# API Gateway lo descubra por nombre ("envoy").
+
+admin:
+  address:
+    socket_address: { address: 0.0.0.0, port_value: 9901 }
+
+static_resources:
+  listeners:
+    - name: grpc_web_listener
+      address:
+        socket_address: { address: 0.0.0.0, port_value: 8080 }
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: grpc_web
+                codec_type: AUTO
+                # Los streams de audio pueden durar mucho: sin timeout de inactividad.
+                stream_idle_timeout: 0s
+                access_log:
+                  - name: envoy.access_loggers.stdout
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog
+                route_config:
+                  name: streaming_route
+                  virtual_hosts:
+                    - name: streaming_service
+                      domains: ["*"]
+                      routes:
+                        - match: { prefix: "/" }
+                          route:
+                            cluster: streaming_service
+                            timeout: 0s
+                            max_stream_duration:
+                              grpc_timeout_header_max: 0s
+                      # CORS para acceso directo (en el flujo normal el API
+                      # Gateway gestiona CORS y descarta estas cabeceras).
+                      typed_per_filter_config:
+                        envoy.filters.http.cors:
+                          "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.CorsPolicy
+                          allow_origin_string_match:
+                            - exact: "*"
+                            - safe_regex: { regex: ".*" }
+                          allow_methods: "GET, PUT, DELETE, POST, OPTIONS"
+                          allow_headers: "keep-alive,user-agent,cache-control,content-type,content-transfer-encoding,x-accept-content-transfer-encoding,x-accept-response-streaming,x-user-agent,x-grpc-web,grpc-timeout,x-request-id"
+                          expose_headers: "grpc-status,grpc-message,grpc-status-details-bin"
+                          max_age: "1728000"
+                http_filters:
+                  - name: envoy.filters.http.grpc_web
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_web.v3.GrpcWeb
+                  - name: envoy.filters.http.cors
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.Cors
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
+  clusters:
+    - name: streaming_service
+      connect_timeout: 1s
+      # STRICT_DNS resuelve todas las IPs de "streaming": si se escala con
+      # `docker compose up --scale streaming=N`, Envoy balancea entre réplicas.
+      type: STRICT_DNS
+      dns_lookup_family: V4_ONLY
+      lb_policy: ROUND_ROBIN
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options: {}
+      # Usa el protocolo estándar grpc.health.v1 implementado por el servidor.
+      health_checks:
+        - timeout: 1s
+          interval: 5s
+          unhealthy_threshold: 2
+          healthy_threshold: 1
+          grpc_health_check: {}
+      load_assignment:
+        cluster_name: streaming_service
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address: { address: streaming, port_value: 50051 }
+

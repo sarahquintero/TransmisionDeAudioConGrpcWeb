@@ -1,0 +1,21 @@
+{
+  "service": {
+    "id": "envoy-grpcweb-1",
+    "name": "envoy",
+    "address": "envoy",
+    "port": 8080,
+    "tags": ["grpc-web", "proxy", "streaming"],
+    "meta": {
+      "upstream": "streaming",
+      "description": "Proxy gRPC-Web -> gRPC hacia el Servidor de Streaming"
+    },
+    "check": {
+      "id": "envoy-ready",
+      "name": "Envoy admin /ready",
+      "http": "http://envoy:9901/ready",
+      "interval": "10s",
+      "timeout": "2s"
+    }
+  }
+}
+
