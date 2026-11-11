@@ -521,8 +521,11 @@ async function cargarHistorial() {
 
 // --- Suscripciones y Pagos ------------------------------------------------
 async function pagarSuscripcion() {
+  if (el.btnPagar.disabled) return;
   const plan = el.selectPlan.value;
+  const originalText = el.btnPagar.textContent;
   el.btnPagar.disabled = true;
+  el.btnPagar.textContent = "Procesando...";
   try {
     const res = await fetch(`${API_BASE}/api/suscripciones/pagar`, {
       method: "POST",
@@ -541,6 +544,7 @@ async function pagarSuscripcion() {
     logSystem(`Error al procesar pago: ${err.message}`);
   } finally {
     el.btnPagar.disabled = false;
+    el.btnPagar.textContent = originalText;
   }
 }
 
